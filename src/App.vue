@@ -9,220 +9,268 @@ const extractInfo = async () => {
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
     function: () => {
-      document.querySelectorAll("article.LobbyRoom").forEach((lobby) => {
-        const jogadores = [...lobby.querySelectorAll(".LobbyPlayerVertical")];
+      const observer = new MutationObserver(() => {
+        document.querySelectorAll("article.LobbyRoom").forEach((lobby) => {
+          const jogadores = [...lobby.querySelectorAll(".LobbyPlayerVertical")];
 
-        // Verifica se a lobby possui exatamente 5 jogadores
-        if (jogadores.length === 5) {
-          // Nome da lobby
-          const nomeLobby = lobby
-            .querySelector(".LobbyRoom__title")
-            ?.textContent.trim();
+          // Verifica se a lobby possui exatamente 5 jogadores
+          if (jogadores.length === 5) {
+            // Nome da lobby
+            const nomeLobby = lobby
+              .querySelector(".LobbyRoom__title")
+              ?.textContent.trim();
 
-          // ID da sala (extraído do ID do contêiner de RoomCardWrapper)
-          const idSala = lobby.closest(".RoomCardWrapper")?.id;
+            // ID da sala (extraído do ID do contêiner de RoomCardWrapper)
+            const idSala = lobby.closest(".RoomCardWrapper")?.id;
 
-          // Dados dos jogadores
-          const detalhesJogadores = jogadores.map((player) => ({
-            id: player.getAttribute("href")?.match(/\/jogador\/(\d+)/)?.[1], // Extrai o ID do href
-            nome: player.title.split("|")[0].trim(),
-            kdr: player.querySelector("[kdr]")?.getAttribute("kdr"),
-            nivel: player
-              .querySelector(".LevelBadge__simple, .LevelBadge__subscriber")
-              ?.textContent.trim(),
-            adr: 0,
-            wins: 0,
-            loss: 0,
-            matches: 0,
-            hs: "0%",
-          }));
+            // Dados dos jogadores
+            const detalhesJogadores = jogadores.map((player) => ({
+              id: player.getAttribute("href")?.match(/\/jogador\/(\d+)/)?.[1], // Extrai o ID do href
+              nome: player.title.split("|")[0].trim(),
+              kdr: player.querySelector("[kdr]")?.getAttribute("kdr"),
+              nivel: player
+                .querySelector(".LevelBadge__simple, .LevelBadge__subscriber")
+                ?.textContent.trim(),
+              adr: 0,
+              wins: 0,
+              loss: 0,
+              matches: 0,
+              hs: "0%",
+            }));
 
-          detalhesJogadores.forEach(async (player) => {
-            try {
-              console.log(player.id);
+            detalhesJogadores.forEach(async (player) => {
+              try {
+                console.log(player.id);
 
-              const response = await fetch(
-                `https://gamersclub.com.br/api/box/history/${player.id}`,
-                {
-                  headers: {
-                    authorization:
-                      "Basic ZnJvbnRlbmQ6NDdhMTZHMmtHTCFmNiRMRUQlJVpDI25X",
-                    origin: "gamersclub.com.br",
-                  },
-                }
-              );
+                const response = await fetch(
+                  `https://gamersclub.com.br/api/box/history/${player.id}`,
+                  {
+                    headers: {
+                      authorization:
+                        "Basic ZnJvbnRlbmQ6NDdhMTZHMmtHTCFmNiRMRUQlJVpDI25X",
+                      origin: "gamersclub.com.br",
+                    },
+                  }
+                );
 
-              const data = await response.json();
-             
-              player.wins = data.matches.wins;
-              player.loss = data.matches.loss;
-              player.matches = data.matches.matches;
+                const data = await response.json();
 
-              player.hs = data.stat.filter((stat) => stat.stat === "HS%")[0].value;
-              player.adr = data.stat.filter((stat) => stat.stat === "ADR")[0].value;
-              player.kdr = data.stat.filter((stat) => stat.stat === "KDR")[0].value;
+                player.wins = data.matches.wins;
+                player.loss = data.matches.loss;
+                player.matches = data.matches.matches;
 
-              
-            } catch (error) {
-              console.error("Error fetching profile:", error);
-            }
-          });
-
-          // pega a lobby e
-          const component = document.querySelector(`#${idSala}`);
-          if (component) {
-            // pega a tag article
-            const article = component.querySelector("article");
-            // muda a cor do background para um amarelo transparente
-            article.style.backgroundColor = "rgba(255, 255, 0, 0.5)";
-            // adiciona os detalhes dos jogadores
-            article.dataset.jogadores = JSON.stringify(detalhesJogadores);
-
-            article.addEventListener("click", () => {
-              // Verifica se já existe um modal
-              if (document.querySelector(".custom-modal")) return;
-
-              // Cria o modal
-              const modal = document.createElement("div");
-              modal.classList.add("custom-modal");
-              modal.style.position = "fixed";
-              modal.style.top = "0";
-              modal.style.width = "100%";
-              modal.style.height = "100%";
-              modal.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-              modal.style.zIndex = "999";
-              modal.style.display = "flex";
-              modal.style.justifyContent = "center";
-              modal.style.alignItems = "center";
-
-              const content = document.createElement("div");
-              content.style.backgroundColor = "#1e293b"; // bg-slate-800
-              content.style.padding = "20px";
-              content.style.borderRadius = "10px";
-              content.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1)";
-
-              const table = document.createElement("table");
-              table.style.width = "100%";
-              table.style.borderCollapse = "collapse";
-              table.style.borderSpacing = "0";
-              table.style.color = "#e2e8f0"; // text-slate-300
-              table.style.marginBottom = "20px";
-
-              // Cabeçalho
-              const thead = document.createElement("thead");
-              thead.style.backgroundColor = "#334155"; // bg-slate-700
-              thead.style.color = "#f1f5f9"; // text-slate-100
-
-              const headerRow = document.createElement("tr");
-              [
-                "Nome",
-                "KDR",
-                "Nível",
-                "ADR",
-                "Wins",
-                "Loss",
-                "Matches",
-                "HS",
-              ].forEach((header) => {
-                const th = document.createElement("th");
-                th.textContent = header;
-                th.style.padding = "10px";
-                th.style.textAlign = "left";
-                th.style.borderBottom = "2px solid #475569"; // Border slate-600
-                headerRow.appendChild(th);
-              });
-
-              thead.appendChild(headerRow);
-              table.appendChild(thead);
-
-              // Corpo
-              const tbody = document.createElement("tbody");
-              detalhesJogadores.forEach((player, index) => {
-                const row = document.createElement("tr");
-                row.style.backgroundColor =
-                  index % 2 === 0 ? "#1e293b" : "#0f172a"; // Alternar entre bg-slate-800 e bg-slate-900
-                row.style.transition = "background-color 0.3s ease";
-                row.addEventListener("mouseover", () => {
-                  row.style.backgroundColor = "#475569"; // Hover: bg-slate-600
-                });
-                row.addEventListener("mouseout", () => {
-                  row.style.backgroundColor =
-                    index % 2 === 0 ? "#1e293b" : "#0f172a";
-                });
-
-                [
-                  "nome",
-                  "kdr",
-                  "nivel",
-                  "adr",
-                  "wins",
-                  "loss",
-                  "matches",
-                  "hs",
-                ].forEach((key) => {
-                  const td = document.createElement("td");
-                  td.textContent = player[key];
-                  td.style.padding = "10px";
-                  td.style.borderBottom = "1px solid #334155"; // Border slate-700
-                  td.style.textAlign = "center";
-                  row.appendChild(td);
-                });
-
-                tbody.appendChild(row);
-              });
-
-              table.appendChild(tbody);
-              content.appendChild(table);
-
-              // Botão para fechar o modal
-              const closeButton = document.createElement("button");
-              closeButton.textContent = "Fechar";
-              closeButton.style.padding = "10px 20px";
-              closeButton.style.backgroundColor = "#ef4444"; // bg-red-500
-              closeButton.style.color = "#fff"; // text-white
-              closeButton.style.border = "none";
-              closeButton.style.cursor = "pointer";
-              closeButton.style.borderRadius = "5px";
-              closeButton.style.transition = "background-color 0.3s ease";
-              closeButton.style.alignSelf = "center";
-              closeButton.addEventListener("mouseover", () => {
-                closeButton.style.backgroundColor = "#dc2626"; // Hover: bg-red-600
-              });
-              closeButton.addEventListener("mouseout", () => {
-                closeButton.style.backgroundColor = "#ef4444";
-              });
-              closeButton.addEventListener("click", () => {
-                modal.remove();
-              });
-
-              content.appendChild(closeButton);
-              modal.appendChild(content);
-              document.body.appendChild(modal);
+                player.hs = data.stat.filter(
+                  (stat) => stat.stat === "HS%"
+                )[0].value;
+                player.adr = data.stat.filter(
+                  (stat) => stat.stat === "ADR"
+                )[0].value;
+                player.kdr = data.stat.filter(
+                  (stat) => stat.stat === "KDR"
+                )[0].value;
+              } catch (error) {
+                console.error("Error fetching profile:", error);
+              }
             });
+
+            // pega a lobby e
+            const component = document.querySelector(`#${idSala}`);
+            if (component) {
+              // pega a tag article
+              const article = component.querySelector("article");
+              // muda a cor do background para um amarelo transparente
+              article.style.backgroundColor = "rgba(255, 255, 0, 0.5)";
+              // adiciona os detalhes dos jogadores
+              article.dataset.jogadores = JSON.stringify(detalhesJogadores);
+
+              article.addEventListener("click", () => {
+                // Verifica se já existe um modal
+                if (document.querySelector(".custom-modal")) return;
+
+                // Cria o modal
+                const modal = document.createElement("div");
+                modal.classList.add("custom-modal");
+                modal.style.position = "fixed";
+                modal.style.top = "0";
+                modal.style.width = "100%";
+                modal.style.height = "100%";
+                modal.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+                modal.style.zIndex = "999";
+                modal.style.display = "flex";
+                modal.style.justifyContent = "center";
+                modal.style.alignItems = "center";
+
+                const content = document.createElement("div");
+                content.style.backgroundColor = "#1e293b"; // bg-slate-800
+                content.style.padding = "20px";
+                content.style.borderRadius = "10px";
+                content.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1)";
+
+                const table = document.createElement("table");
+                table.style.width = "100%";
+                table.style.borderCollapse = "collapse";
+                table.style.borderSpacing = "0";
+                table.style.color = "#e2e8f0"; // text-slate-300
+                table.style.marginBottom = "20px";
+
+                // Cabeçalho
+                const thead = document.createElement("thead");
+                thead.style.backgroundColor = "#334155"; // bg-slate-700
+                thead.style.color = "#f1f5f9"; // text-slate-100
+
+                const headerRow = document.createElement("tr");
+                [
+                  "Nome",
+                  "KDR",
+                  "Nível",
+                  "ADR",
+                  "Wins",
+                  "Loss",
+                  "Matches",
+                  "HS",
+                ].forEach((header) => {
+                  const th = document.createElement("th");
+                  th.textContent = header;
+                  th.style.padding = "10px";
+                  th.style.textAlign = "left";
+                  th.style.borderBottom = "2px solid #475569"; // Border slate-600
+                  headerRow.appendChild(th);
+                });
+
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                // Corpo
+                const tbody = document.createElement("tbody");
+                detalhesJogadores.forEach((player, index) => {
+                  const row = document.createElement("tr");
+                  row.style.backgroundColor =
+                    index % 2 === 0 ? "#1e293b" : "#0f172a"; // Alternar entre bg-slate-800 e bg-slate-900
+                  row.style.transition = "background-color 0.3s ease";
+                  row.addEventListener("mouseover", () => {
+                    row.style.backgroundColor = "#475569"; // Hover: bg-slate-600
+                  });
+                  row.addEventListener("mouseout", () => {
+                    row.style.backgroundColor =
+                      index % 2 === 0 ? "#1e293b" : "#0f172a";
+                  });
+
+                  [
+                    "nome",
+                    "kdr",
+                    "nivel",
+                    "adr",
+                    "wins",
+                    "loss",
+                    "matches",
+                    "hs",
+                  ].forEach((key) => {
+                    const td = document.createElement("td");
+                    td.textContent = player[key];
+                    td.style.padding = "10px";
+                    td.style.borderBottom = "1px solid #334155"; // Border slate-700
+                    td.style.textAlign = "center";
+                    row.appendChild(td);
+                  });
+
+                  tbody.appendChild(row);
+                });
+
+                table.appendChild(tbody);
+                content.appendChild(table);
+
+                // Botão para fechar o modal
+                const closeButton = document.createElement("button");
+                closeButton.textContent = "Fechar";
+                closeButton.style.padding = "10px 20px";
+                closeButton.style.backgroundColor = "#ef4444"; // bg-red-500
+                closeButton.style.color = "#fff"; // text-white
+                closeButton.style.border = "none";
+                closeButton.style.cursor = "pointer";
+                closeButton.style.borderRadius = "5px";
+                closeButton.style.transition = "background-color 0.3s ease";
+                closeButton.style.alignSelf = "center";
+                closeButton.addEventListener("mouseover", () => {
+                  closeButton.style.backgroundColor = "#dc2626"; // Hover: bg-red-600
+                });
+                closeButton.addEventListener("mouseout", () => {
+                  closeButton.style.backgroundColor = "#ef4444";
+                });
+                closeButton.addEventListener("click", () => {
+                  modal.remove();
+                });
+
+                content.appendChild(closeButton);
+                modal.appendChild(content);
+                document.body.appendChild(modal);
+              });
+            }
+
+            // Exibe a lobby com o ID da sala e os jogadores
+            console.log({
+              idSala,
+              nomeLobby,
+              jogadores: detalhesJogadores,
+            });
+
+            // Retorna os dados da lobby
+            return {
+              idSala,
+              nomeLobby,
+              jogadores: detalhesJogadores,
+            };
           }
-
-          // Exibe a lobby com o ID da sala e os jogadores
-          console.log({
-            idSala,
-            nomeLobby,
-            jogadores: detalhesJogadores,
-          });
-
-          // Retorna os dados da lobby
-          return {
-            idSala,
-            nomeLobby,
-            jogadores: detalhesJogadores,
-          };
-        }
+        });
       });
+
+      // Configuração para observar mudanças no DOM do contêiner que contém as salas
+      const config = {
+        childList: true,
+        subtree: true,
+      };
+
+      // Seleciona o contêiner onde as salas estão sendo exibidas
+      const lobbyListContainer = document.querySelector(".LobbyListContainer");
+
+      // Inicia a observação
+      if (lobbyListContainer) {
+        observer.observe(lobbyListContainer, config);
+      }
+    },
+  });
+};
+
+const observeLobbies = async (extractInfo) => {
+  let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    function: () => {
+      // Configuração do MutationObserver para observar a criação de novas salas ou a atualização das existentes
+      const observer = new MutationObserver(() => {
+        extractInfo();
+      });
+
+      // Configuração para observar mudanças no DOM do contêiner que contém as salas
+      const config = {
+        childList: true,
+        subtree: true,
+      };
+
+      // Seleciona o contêiner onde as salas estão sendo exibidas
+      const lobbyListContainer = document.querySelector(".LobbyListContainer");
+
+      // Inicia a observação
+      if (lobbyListContainer) {
+        observer.observe(lobbyListContainer, config);
+      }
     },
   });
 };
 
 onMounted(() => {
   extractInfo();
-  // teste();
+  // observeLobbies();
 });
 
 const teste = async () => {

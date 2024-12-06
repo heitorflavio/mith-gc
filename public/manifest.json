@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "version": "1.0.0",
+  "name": "Mith2",
+  "action": {
+    "default_popup": "index.html"
+  },
+  "permissions": [
+    "storage",
+    "declarativeContent",
+    "activeTab",
+    "scripting",
+    "webRequest",
+    "webRequestAuthProvider"
+  ],
+  "host_permissions": [
+    "https://*gamersclub.com.br/",
+    "https://cs.gamersclub.gg/",
+    "https://discord.com/api/webhooks/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval';object-src 'self';"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{68a6744b-6d1e-4c85-83ad-637c9dc135b5}"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.gamersclub.com.br/*", "*://cs.gamersclub.gg/*"],
+      "js": ["assets/*"],
+      "css": ["assets/*"]
+    }
+  ]
+}

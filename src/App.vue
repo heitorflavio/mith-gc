@@ -41,7 +41,7 @@ const extractInfo = async () => {
             try {
               console.log(player.id);
 
-              const response = await this.$axios.get(
+              const response = await fetch(
                 `https://gamersclub.com.br/api/box/history/${player.id}`,
                 {
                   headers: {
@@ -52,8 +52,17 @@ const extractInfo = async () => {
                 }
               );
 
-              // The response data is directly available in response.data
-              console.log(response.data);
+              const data = await response.json();
+             
+              player.wins = data.matches.wins;
+              player.loss = data.matches.loss;
+              player.matches = data.matches.matches;
+
+              player.hs = data.stat.filter((stat) => stat.stat === "HS%")[0].value;
+              player.adr = data.stat.filter((stat) => stat.stat === "ADR")[0].value;
+              player.kdr = data.stat.filter((stat) => stat.stat === "KDR")[0].value;
+
+              
             } catch (error) {
               console.error("Error fetching profile:", error);
             }
